@@ -3,80 +3,82 @@ import requests
 
 st.set_page_config(page_title="eSewa Tracker", layout="wide")
 
-# (Keep your CSS block here from the previous message, 
-# Custom CSS for the "Timeline" look
+# Styling for the Visual Timeline
 st.markdown("""
     <style>
-    .timeline-wrapper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 0;
-        font-family: sans-serif;
-    }
-    .step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        position: relative;
-        width: 200px;
-    }
-    .dot {
-        height: 40px;
-        width: 40px;
-        background-color: #bbb;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: bold;
-        z-index: 2;
-    }
-    .dot-active { background-color: #76b852; } /* Green color from your image */
-    .line {
-        position: absolute;
-        height: 4px;
-        background-color: #bbb;
-        width: 100%;
-        top: 18px;
-        left: 50%;
-        z-index: 1;
-    }
-    .line-active { background-color: #76b852; }
-    .label { margin-top: 15px; font-weight: bold; text-align: center; color: #333; }
-    .date { font-size: 0.85em; color: #666; }
+    .timeline-wrapper { display: flex; align-items: center; justify-content: center; padding: 40px 0; }
+    .step { display: flex; flex-direction: column; align-items: center; position: relative; width: 250px; }
+    .dot { height: 40px; width: 40px; background-color: #ddd; border-radius: 50%; display: flex; 
+           align-items: center; justify-content: center; color: white; font-weight: bold; z-index: 2; border: 2px solid #fff; }
+    .dot-active { background-color: #4CAF50; box-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+    .line { position: absolute; height: 4px; background-color: #ddd; width: 100%; top: 18px; left: 50%; z-index: 1; }
+    .line-active { background-color: #4CAF50; }
+    .label { margin-top: 15px; font-weight: bold; color: #333; text-align: center; }
+    .date { font-size: 0.8em; color: #777; }
     </style>
     """, unsafe_allow_html=True)
 
 st.title("🚜 Punjab eSewa Quick Tracker")
-
 app_id = st.text_input("Enter Application ID", value="89080987")
 
 if st.button("Track Status"):
-    # Add a visual loader so you know it's working
-    with st.spinner("Connecting to Punjab Govt Servers..."):
+    with st.spinner("Fetching status..."):
         url = "https://esewa.punjab.gov.in/common/api/Common/TrackApplicationProcess"
         headers = {
             "Content-Type": "application/json;charset=UTF-8",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "User-Agent": "Mozilla/5.0",
             "Origin": "https://esewa.punjab.gov.in",
             "Referer": "https://esewa.punjab.gov.in/trackStatus_DetailedApllication"
         }
         
         try:
-            # Set a 10-second timeout so it doesn't hang forever
             response = requests.post(url, json={"ApplicationId": str(app_id)}, headers=headers, timeout=10)
+            res_json = response.json()
             
-            if response.status_code == 200:
-                res_json = response.json()
-                # ... (rest of your logic to display the dots)
-                st.success("Data Fetched!")
-                st.json(res_json) # Temporary: See the data to confirm it's working
-            else:
-                st.error(f"Government server rejected the request (Status: {response.status_code}). This usually happens if you are using a VPN or non-Indian IP.")
+            if res_json.get("data") and len(res_json["data"][0]) > 0:
+                item = res_json["data"][0][0]
                 
-        except requests.exceptions.Timeout:
-            st.error("Request Timed Out. The eSewa portal is taking too long to respond.")
+                # Logic based on your actual data
+                # Step 1: Always active if record exists
+                sub_date = item.get("Application_Submitted")
+                
+                # Step 2: Under Processing (Active if status is P or Under_Processing is Yes)
+                # In your screenshot, it's 'P' but 'No'. Usually 'P' means it's in the queue.
+                is_processing = item.get("Application_Status") == "P" or item.get("Under_Processing") == "Yes"
+                
+                # Step 3: Approved or Rejected
+                final_date = item.get("Approved_or_Rejected_Date")
+                is_final = final_date != "No"
+
+                st.subheader(f"Application Id : {app_id}")
+
+                # Display Visuals
+                html_code = f"""
+                <div class="timeline-wrapper">
+                    <div class="step">
+                        <div class="dot dot-active">✔</div>
+                        <div class="line {'line-active' if is_processing or is_final else ''}"></div>
+                        <div class="label">Application Submitted</div>
+                        <div class="date">{sub_date}</div>
+                    </div>
+                    <div class="step">
+                        <div class="dot {'dot-active' if is_processing or is_final else ''}">{'✔' if is_processing or is_final else ''}</div>
+                        <div class="line {'line-active' if is_final else ''}"></div>
+                        <div class="label">Under Processing</div>
+                    </div>
+                    <div class="step">
+                        <div class="dot {'dot-active' if is_final else ''}">{'✔' if is_final else ''}</div>
+                        <div class="label">Accept/Reject</div>
+                        <div class="date">{final_date if is_final else ''}</div>
+                    </div>
+                </div>
+                """
+                st.markdown(html_code, unsafe_allow_html=True)
+                
+                # Optional: Show details in a clean table below
+                with st.expander("View Raw Details"):
+                    st.write(item)
+            else:
+                st.warning("No data found for this ID.")
         except Exception as e:
-            st.error(f"An error occurred: {e}")
+            st.error(f"Error: {e}")
