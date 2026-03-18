@@ -46,7 +46,7 @@ st.markdown("""
     .label { margin-top: 15px; font-weight: bold; text-align: center; color: #333; }
     .date { font-size: 0.85em; color: #666; }
     </style>
-    """, unsafe_allow_index=True)
+    """, unsafe_allow_html=True)
 
 st.title("🚜 Punjab eSewa Quick Tracker")
 
