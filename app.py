@@ -98,7 +98,7 @@ if st.button("Track Status"):
                 </div>
             </div>
             """
-            st.markdown(html_code, unsafe_allow_index=True)
+            st.markdown(""" ... """, unsafe_allow_html=True)
         else:
             st.warning("No application found with this ID.")
             
