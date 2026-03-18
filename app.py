@@ -39,14 +39,15 @@ if st.button("Track Status"):
                 item = res_json["data"][0][0]
                 
                 # Logic based on your actual data
+                # --- REFINED LOGIC ---
                 # Step 1: Always active if record exists
                 sub_date = item.get("Application_Submitted")
                 
-                # Step 2: Under Processing (Active if status is P or Under_Processing is Yes)
-                # In your screenshot, it's 'P' but 'No'. Usually 'P' means it's in the queue.
-                is_processing = item.get("Application_Status") == "P" or item.get("Under_Processing") == "Yes"
+                # Step 2: Under Processing - Only green if the portal says "Yes"
+                # This fixes the error where 'P' was triggering it too early
+                is_processing = item.get("Under_Processing") == "Yes"
                 
-                # Step 3: Approved or Rejected
+                # Step 3: Approved or Rejected - Only green if there is a date provided
                 final_date = item.get("Approved_or_Rejected_Date")
                 is_final = final_date != "No"
 
